@@ -1,6 +1,7 @@
 ﻿// Calibrated against assets/hud_base.png (335px wide).
 const abilityCenters = [0.303, 0.497, 0.691, 0.885];
-let slotsPerAbility = 2;
+let abilitySlotCounts = [2, 2, 2, 2];
+let currentStage = "early";
 
 const TYPES = ["power", "protection", "space", "time"];
 const RARITIES = ["common", "rare", "epic"];
@@ -47,67 +48,138 @@ const BASE_EFFECTS_BY_ABILITY = {
 const abilitySlotsEl = document.getElementById("abilitySlots");
 const inventoryEl = document.getElementById("inventory");
 const effectsPanelEl = document.getElementById("effectsPanel");
-const countButtons = Array.from(document.querySelectorAll(".slot-count-btn"));
+const stageButtons = Array.from(document.querySelectorAll(".slot-count-btn"));
 
 init();
 
 function init() {
-  renderSlots();
-  renderInventory();
+  setupStageButtons();
   setupInventoryDrop();
-  setupCountButtons();
-  renderEffectsPanel();
+  applyStage(currentStage);
 }
 
-function setupCountButtons() {
-  for (const button of countButtons) {
+function setupStageButtons() {
+  for (const button of stageButtons) {
     button.addEventListener("click", () => {
-      const nextCount = Number(button.dataset.slotCount);
-      if (!Number.isInteger(nextCount) || nextCount < 1 || nextCount > 3) {
+      const nextStage = button.dataset.stage;
+      if (!nextStage || nextStage === currentStage) {
         return;
       }
-      slotsPerAbility = nextCount;
-      for (const btn of countButtons) {
-        btn.classList.toggle("is-active", btn === button);
-      }
-      rerenderKeepingPlacedGems();
+      applyStage(nextStage);
     });
   }
 }
 
-function renderInventory() {
-  const inventoryGems = buildInventoryGems();
+function applyStage(stage) {
+  currentStage = stage;
+  for (const btn of stageButtons) {
+    btn.classList.toggle("is-active", btn.dataset.stage === stage);
+  }
+
+  abilitySlotCounts = buildSlotCountsForStage(stage);
+  renderSlots();
+  renderInventoryForStage(stage);
+  renderEffectsPanel();
+}
+
+function renderInventoryForStage(stage) {
+  inventoryEl.innerHTML = "";
+  const inventoryGems = buildInventoryGems(stage);
   for (const gemDef of inventoryGems) {
     inventoryEl.appendChild(createGemEl(gemDef));
   }
   sortInventory();
 }
 
-function buildInventoryGems() {
+function buildInventoryGems(stage) {
   const gems = [];
   let index = 0;
 
+  if (stage === "early") {
+    for (let i = 0; i < 4; i += 1) {
+      gems.push(createGemDef(randomType(), "common", ++index));
+    }
+    return gems;
+  }
+
+  if (stage === "lategame") {
+    for (let i = 0; i < 4; i += 1) {
+      gems.push(createGemDef(randomType(), "epic", ++index));
+    }
+    for (let i = 0; i < 6; i += 1) {
+      gems.push(createGemDef(randomType(), "rare", ++index));
+    }
+    for (const type of TYPES) {
+      gems.push(createGemDef(type, "common", ++index));
+      gems.push(createGemDef(type, "common", ++index));
+    }
+    return gems;
+  }
+
+  // Midgame uses the current/default rules.
   for (const type of TYPES) {
     gems.push(createGemDef(type, "common", ++index));
   }
-
   for (let i = 0; i < 2; i += 1) {
-    const randomType = TYPES[Math.floor(Math.random() * TYPES.length)];
-    gems.push(createGemDef(randomType, "common", ++index));
+    gems.push(createGemDef(randomType(), "common", ++index));
   }
-
   for (const type of TYPES) {
     gems.push(createGemDef(type, "rare", ++index));
   }
-
-  const firstEpicType = TYPES[Math.floor(Math.random() * TYPES.length)];
-  const remainingTypes = TYPES.filter((type) => type !== firstEpicType);
-  const secondEpicType = remainingTypes[Math.floor(Math.random() * remainingTypes.length)];
-
-  gems.push(createGemDef(firstEpicType, "epic", ++index));
-  gems.push(createGemDef(secondEpicType, "epic", ++index));
+  const [epicTypeA, epicTypeB] = pickDistinctTypes(2);
+  gems.push(createGemDef(epicTypeA, "epic", ++index));
+  gems.push(createGemDef(epicTypeB, "epic", ++index));
 
   return gems;
+}
+
+function buildSlotCountsForStage(stage) {
+  if (stage === "early") {
+    const counts = [0, 0, 0, 0];
+    const chosen = pickDistinctAbilityIndices(2);
+    for (const index of chosen) {
+      counts[index] = 1;
+    }
+    return counts;
+  }
+
+  if (stage === "lategame") {
+    return [3, 3, 3, 3];
+  }
+
+  // Midgame: 2-3 abilities with 2 slots, others with 1.
+  const counts = [1, 1, 1, 1];
+  const twoSlotAbilityCount = Math.random() < 0.5 ? 2 : 3;
+  const chosen = pickDistinctAbilityIndices(twoSlotAbilityCount);
+  for (const index of chosen) {
+    counts[index] = 2;
+  }
+  return counts;
+}
+
+function pickDistinctAbilityIndices(count) {
+  const all = [0, 1, 2, 3];
+  shuffleInPlace(all);
+  return all.slice(0, count);
+}
+
+function pickDistinctTypes(count) {
+  const all = [...TYPES];
+  shuffleInPlace(all);
+  return all.slice(0, count);
+}
+
+function randomType() {
+  return TYPES[Math.floor(Math.random() * TYPES.length)];
+}
+
+function shuffleInPlace(values) {
+  for (let i = values.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = values[i];
+    values[i] = values[j];
+    values[j] = tmp;
+  }
 }
 
 function createGemDef(type, rarity, index) {
@@ -126,7 +198,7 @@ function renderSlots() {
     column.className = "ability-column";
     column.style.left = `${center * 100}%`;
 
-    for (let i = 0; i < slotsPerAbility; i += 1) {
+    for (let i = 0; i < abilitySlotCounts[abilityIndex]; i += 1) {
       const slot = document.createElement("div");
       slot.className = "slot dropzone";
       slot.dataset.zoneType = "slot";
@@ -261,16 +333,6 @@ function isGemDrag(event) {
   return event.dataTransfer?.types?.includes("text/gem-id");
 }
 
-function rerenderKeepingPlacedGems() {
-  const placed = Array.from(document.querySelectorAll(".slot > .gem"));
-  for (const gem of placed) {
-    inventoryEl.appendChild(gem);
-  }
-  sortInventory();
-  renderSlots();
-  renderEffectsPanel();
-}
-
 function sortInventory() {
   const gems = Array.from(inventoryEl.querySelectorAll(".gem"));
   gems.sort((a, b) => {
@@ -345,7 +407,7 @@ function renderEffectsPanel() {
     if (slottedGems.length === 0) {
       const empty = document.createElement("p");
       empty.className = "effects-empty";
-      empty.textContent = "Total effects: none";
+      empty.textContent = "none";
       card.appendChild(empty);
     } else {
       const totals = totalizeEffectsForAbility(slottedGems, abilityIndex);
