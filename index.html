@@ -1,0 +1,46 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HUD Gem Slot Mockup</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="page">
+    <h1>HUD Gem Slot Mockup</h1>
+
+    <section class="controls">
+      <span>Slots per ability:</span>
+      <div class="slot-count-buttons" role="group" aria-label="Slots per ability">
+        <button class="slot-count-btn" data-slot-count="1" type="button">1</button>
+        <button class="slot-count-btn is-active" data-slot-count="2" type="button">2</button>
+        <button class="slot-count-btn" data-slot-count="3" type="button">3</button>
+      </div>
+    </section>
+
+    <section class="inventory-section">
+      <h2>Gem Inventory</h2>
+      <p>Type is shown by icon and rarity by shape: triangle (common), square (rare), pentagon (epic).</p>
+      <div id="inventory" class="inventory dropzone" data-zone-type="inventory" aria-label="Gem inventory"></div>
+    </section>
+
+    <section class="hud-effects-row">
+      <section class="hud-stage" aria-label="Ability HUD with gem slots">
+        <div class="hud-wrap" id="hudWrap">
+          <img src="assets/hud_base.png" alt="Base HUD" class="hud-image" />
+          <div class="ability-slots" id="abilitySlots"></div>
+        </div>
+      </section>
+
+      <section class="effects-section">
+        <h2>Active Gem Effects</h2>
+        <div id="effectsPanel" class="effects-panel" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
